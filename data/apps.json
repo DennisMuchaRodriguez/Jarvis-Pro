@@ -1,0 +1,17 @@
+{
+  "_comentario": "Programas y juegos que Jarvis puede abrir/cerrar. target = ejecutable, ruta o URI. process = nombre del proceso para cerrarlo (míralo en el Administrador de tareas).",
+
+  "chrome":        { "aliases": ["google chrome", "navegador"], "target": "chrome", "process": "chrome.exe" },
+  "visual studio code": { "aliases": ["vs code", "code", "editor"], "target": "code", "process": "Code.exe" },
+  "unity hub":     { "aliases": ["unity"], "target": "C:\\Program Files\\Unity Hub\\Unity Hub.exe", "process": "Unity Hub.exe" },
+  "spotify":       { "aliases": ["musica"], "target": "spotify:", "process": "Spotify.exe" },
+  "discord":       { "aliases": [], "target": "discord://", "process": "Discord.exe" },
+  "whatsapp":      { "aliases": [], "target": "whatsapp:", "process": "WhatsApp.exe" },
+  "steam":         { "aliases": [], "target": "steam://open/main", "process": "steam.exe" },
+  "explorador de archivos": { "aliases": ["explorador", "archivos", "mis documentos"], "target": "explorer", "process": "explorer.exe" },
+  "bloc de notas": { "aliases": ["notas", "notepad"], "target": "notepad", "process": "notepad.exe" },
+  "calculadora":   { "aliases": [], "target": "calc", "process": "CalculatorApp.exe" },
+
+  "counter strike 2": { "aliases": ["counter", "cs", "cs2"], "target": "steam://rungameid/730", "process": "cs2.exe" },
+  "rocket league":    { "aliases": [], "target": "steam://rungameid/252950", "process": "RocketLeague.exe" }
+}

@@ -1,0 +1,25 @@
+# Cerebro (Claude API)
+anthropic>=1.11,<2
+python-dotenv>=1.0
+
+# Oído: aplausos + reconocimiento de voz
+numpy>=1.26
+sounddevice>=0.4.6
+SpeechRecognition>=3.10
+PyAudio>=0.2.14          # lo usa SpeechRecognition para abrir el micrófono
+
+# Voz
+edge-tts>=6.1            # voces neuronales gratis de Microsoft (requiere internet)
+pygame>=2.5              # reproduce el audio generado
+pyttsx3>=2.90            # voz de respaldo sin internet
+
+# Control del PC
+pyautogui>=0.9.54        # teclado/ratón, teclas multimedia, capturas
+pyperclip>=1.8           # escribir texto con acentos vía portapapeles
+psutil>=5.9              # cerrar programas, batería, CPU
+
+# Opcional: reconocimiento de voz local (sin internet) con Whisper
+# faster-whisper>=1.0
+
+# Desarrollo
+pytest>=8

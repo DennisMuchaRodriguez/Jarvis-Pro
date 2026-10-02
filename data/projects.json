@@ -1,0 +1,15 @@
+{
+  "_comentario": "Tus proyectos. type: vscode | unity | folder. 'editor' (opcional) = Unity.exe de la versión del proyecto.",
+
+  "jarvis": {
+    "aliases": ["jarvis pro", "asistente"],
+    "path": "C:\\Users\\TU_USUARIO\\Proyectos\\Jarvis-Pro",
+    "type": "vscode"
+  },
+  "mi juego": {
+    "aliases": ["juego de unity"],
+    "path": "C:\\Users\\TU_USUARIO\\Unity\\MiJuego",
+    "type": "unity",
+    "editor": "C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.20f1\\Editor\\Unity.exe"
+  }
+}

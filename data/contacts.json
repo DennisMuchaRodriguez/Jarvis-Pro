@@ -1,0 +1,6 @@
+{
+  "_comentario": "Contactos de WhatsApp. phone con código de país, sin espacios (México: +52...).",
+
+  "mamá":  { "aliases": ["mama", "madre", "mami"], "phone": "+520000000000" },
+  "carlos": { "aliases": ["carlitos"], "phone": "+520000000000" }
+}
