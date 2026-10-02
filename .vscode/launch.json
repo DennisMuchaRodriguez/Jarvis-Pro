@@ -1,0 +1,48 @@
+{
+  // Botones para ejecutar Jarvis: pestaña "Run and Debug" (Ctrl+Shift+D), elige uno y pulsa F5.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "1. Verificar instalación",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/verificar.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "2. Jarvis: modo texto (escribiendo)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/main.py",
+      "args": ["--texto"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "3. Jarvis: voz, despertar con Enter",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/main.py",
+      "args": ["--sin-aplausos"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "4. Calibrar aplausos",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "jarvis.audio.clap_detector",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "5. Jarvis completo (aplausos + voz)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/main.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ]
+}

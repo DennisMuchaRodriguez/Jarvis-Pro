@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import re
 import tempfile
 import time
@@ -15,6 +16,7 @@ from pathlib import Path
 from jarvis.config import Settings
 
 log = logging.getLogger(__name__)
+os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 
 def clean_for_speech(text: str) -> str:

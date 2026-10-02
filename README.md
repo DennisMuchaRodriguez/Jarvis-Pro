@@ -141,30 +141,37 @@ Las acciones delicadas (`confirm=` en el decorador) hacen que Jarvis pregunte en
 
 ---
 
-## 4. Instalación (Windows)
+## 4. Instalación paso a paso (Windows + VS Code)
 
-1. Instala **Python 3.10 o superior** (marca "Add Python to PATH").
-2. En una terminal, dentro de la carpeta del proyecto:
-   ```bash
-   python -m venv .venv
-   .venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-3. Consigue una clave de la API de Claude en <https://platform.claude.com> → *API Keys*.
-4. Copia `.env.example` como `.env` y pon tu `ANTHROPIC_API_KEY` y tu nombre.
-5. Edita `data/apps.json`, `data/projects.json` y `data/contacts.json` con tus programas, rutas y contactos.
-   - Para juegos de Steam: clic derecho en el juego → *Propiedades* → el número de la URL de la tienda es el ID
+1. **Confía en la carpeta**: en VS Code, pulsa *Manage* en la barra azul de "Restricted Mode" → *Trust*.
+   (En modo restringido VS Code marca los acentos con recuadros y desactiva extensiones.)
+2. **Instala Python 3.12** desde <https://www.python.org/downloads/> marcando *Add python.exe to PATH*.
+   Evita 3.14: algunas librerías de audio aún no tienen versión para él.
+3. **Instala la extensión "Python"** de Microsoft (VS Code te la sugiere al abrir el proyecto).
+4. **Ejecuta el instalador**: menú *Terminal → New Terminal* y escribe `.\instalar.bat`.
+   Crea el entorno `.venv`, instala todo, crea tu `.env` y ejecuta `verificar.py`.
+5. **Selecciona el intérprete**: `Ctrl+Shift+P` → *Python: Select Interpreter* → el que dice `.venv`.
+6. **Clave de API**: entra a <https://platform.claude.com>, crea tu cuenta, agrega créditos en *Billing*
+   y crea una clave en *API Keys*. Pégala en `.env` → `ANTHROPIC_API_KEY=sk-ant-...` y guarda (`Ctrl+S`).
+7. **Personaliza** `data/apps.json`, `data/projects.json`, `data/contacts.json` y el resto de `.env`.
+   - En los `.json`, las rutas llevan **doble barra**: `"C:\\Users\\Dennis\\Unity\\MiJuego"`. En `.env`, barra normal.
+   - Juegos de Steam: clic derecho en el juego → *Propiedades* → *Actualizaciones*: ahí aparece el *ID de la aplicación*
      (`steam://rungameid/ID`).
    - Para cerrar programas, `process` es el nombre que ves en el Administrador de tareas → *Detalles*.
+8. **Verifica**: `python verificar.py` hasta que no quede ningún `[X]`.
 
 ## 5. Uso
 
-```bash
-python main.py --texto          # 1º prueba escribiendo (sin micrófono): verifica el cerebro y las habilidades
-python main.py --sin-aplausos   # 2º prueba la voz: despierta con Enter
-python -m jarvis.audio.clap_detector   # 3º calibra los aplausos (mira el "pico" de tus aplausos)
-python main.py                  # 4º ¡modo Iron Man completo!
-```
+Pestaña *Run and Debug* (`Ctrl+Shift+D`): elige una opción en la lista de arriba y pulsa **F5**.
+
+| Opción | Equivale a | Para qué |
+|---|---|---|
+| 1. Verificar instalación | `python verificar.py` | Revisa que todo esté listo |
+| 2. Jarvis: modo texto | `python main.py --texto` | Le escribes; prueba el cerebro y las habilidades |
+| 3. Jarvis: voz, despertar con Enter | `python main.py --sin-aplausos` | Prueba micrófono y voz |
+| 4. Calibrar aplausos | `python -m jarvis.audio.clap_detector` | Ajusta la sensibilidad |
+| 5. Jarvis completo | `python main.py` | ¡Modo Iron Man! |
+
 Añade `--debug` para ver todo lo que pasa por dentro.
 
 **Calibrar aplausos:** ejecuta el calibrador, aplaude y habla. Pon `JARVIS_CLAP_THRESHOLD` en `.env` un poco
