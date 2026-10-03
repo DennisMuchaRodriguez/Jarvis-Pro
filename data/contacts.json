@@ -1,6 +1,7 @@
 {
   "_comentario": "Contactos de WhatsApp. phone con código de país, sin espacios (México: +52...).",
 
-  "mamá":  { "aliases": ["mama", "madre", "mami"], "phone": "+520000000000" },
-  "carlos": { "aliases": ["carlitos"], "phone": "+520000000000" }
+  "mamá":  { "aliases": ["mama", "madre", "mami"], "phone": "+51942327402" },
+  "padre":  { "aliases": ["papa", "padre", "viejo"], "phone": "+51912922738" },
+  "Anvati": { "aliases":["Anvati", "Kabro", "Tragatubos"], "phone": "+51987716686" }
 }

@@ -13,5 +13,7 @@
   "calculadora":   { "aliases": [], "target": "calc", "process": "CalculatorApp.exe" },
 
   "counter strike 2": { "aliases": ["counter", "cs", "cs2"], "target": "steam://rungameid/730", "process": "cs2.exe" },
+  "left 4 dead 2": {"aliases": ["left", "Leftsito"], "target": "steam://rungameid/550","process": "left4dead2.exe"} ,
   "rocket league":    { "aliases": [], "target": "steam://rungameid/252950", "process": "RocketLeague.exe" }
 }
+

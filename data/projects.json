@@ -7,9 +7,9 @@
     "type": "vscode"
   },
   "mi juego": {
-    "aliases": ["juego de unity"],
-    "path": "C:\\Users\\TU_USUARIO\\Unity\\MiJuego",
+    "aliases": ["El-E-quipu"],
+    "path": "D\\Proyectos\\El-E-quipu",
     "type": "unity",
-    "editor": "C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.20f1\\Editor\\Unity.exe"
+    "editor": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.3.7f1\\Editor\\Unity.exe"
   }
 }
