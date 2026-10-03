@@ -1,20 +1,19 @@
 """Oído de Jarvis: convierte lo que dices en texto.
 
-Motores disponibles (elige con JARVIS_STT_ENGINE):
-- google:  gratis, muy bueno en español, necesita internet.
-- whisper: corre en tu PC con faster-whisper (sin internet). Más lento en
-           equipos sin GPU; instala `pip install faster-whisper`.
-
-SpeechRecognition se encarga de lo difícil: detecta cuándo empiezas a hablar
-y cuándo terminas (por el silencio) y nos entrega solo esa frase.
+Dos pasos:
+  1. recorder.PhraseRecorder graba tu frase COMPLETA (detecta voz, no volumen).
+  2. Un motor la transcribe (elige con JARVIS_STT_ENGINE):
+     - google:  gratis, muy bueno en español, necesita internet.
+     - whisper: corre en tu PC con faster-whisper (sin internet). Más lento en
+                equipos sin GPU; instala `pip install faster-whisper`.
 """
 from __future__ import annotations
 
 import logging
 
 import numpy as np
-import speech_recognition as sr
 
+from jarvis.audio.recorder import SAMPLE_RATE, PhraseRecorder
 from jarvis.config import Settings
 
 log = logging.getLogger(__name__)
@@ -23,50 +22,47 @@ log = logging.getLogger(__name__)
 class SpeechToText:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.recognizer = sr.Recognizer()
-        self.recognizer.pause_threshold = 0.8          # silencio que marca el fin de la frase
-        self.recognizer.dynamic_energy_threshold = True
+        self.recorder = PhraseRecorder(
+            device=settings.mic_device,
+            vad_aggressiveness=settings.vad_aggressiveness,
+            silence_end=settings.silence_end,
+            max_phrase=settings.phrase_time_limit,
+            max_gain=settings.mic_max_gain,
+            beep=settings.listen_beep,
+        )
         self._whisper = None
-        self._calibrated = False
 
     def listen(self) -> str | None:
         """Escucha una frase. Devuelve el texto, o None si no se oyó/entendió nada."""
-        with sr.Microphone(sample_rate=16000) as source:
-            if not self._calibrated:
-                log.info("Calibrando el ruido ambiente...")
-                self.recognizer.adjust_for_ambient_noise(source, duration=1)
-                self._calibrated = True
-            log.info("Escuchando...")
-            try:
-                audio = self.recognizer.listen(
-                    source,
-                    timeout=self.settings.listen_timeout,
-                    phrase_time_limit=self.settings.phrase_time_limit,
-                )
-            except sr.WaitTimeoutError:
-                return None
-        return self._transcribe(audio)
+        samples = self.recorder.record(timeout=self.settings.listen_timeout)
+        if samples is None:
+            return None
+        return self.transcribe(samples)
 
-    def _transcribe(self, audio: sr.AudioData) -> str | None:
+    def transcribe(self, samples: np.ndarray) -> str | None:
         if self.settings.stt_engine == "whisper":
-            return self._transcribe_whisper(audio)
+            return self._transcribe_whisper(samples)
+        return self._transcribe_google(samples)
+
+    def _transcribe_google(self, samples: np.ndarray) -> str | None:
+        import speech_recognition as sr
+
+        audio = sr.AudioData(samples.tobytes(), SAMPLE_RATE, 2)
         try:
-            return self.recognizer.recognize_google(audio, language=self.settings.language)
+            return sr.Recognizer().recognize_google(audio, language=self.settings.language)
         except sr.UnknownValueError:
             return None
         except sr.RequestError as exc:
             log.error("Sin conexión con el reconocimiento de Google: %s", exc)
             return None
 
-    def _transcribe_whisper(self, audio: sr.AudioData) -> str | None:
+    def _transcribe_whisper(self, samples: np.ndarray) -> str | None:
         if self._whisper is None:
             from faster_whisper import WhisperModel
 
             log.info("Cargando Whisper '%s' (solo la primera vez)...", self.settings.whisper_model)
             self._whisper = WhisperModel(self.settings.whisper_model, device="auto", compute_type="int8")
-        raw = audio.get_raw_data(convert_rate=16000, convert_width=2)
-        samples = np.frombuffer(raw, np.int16).astype(np.float32) / 32768.0
-        segments, _ = self._whisper.transcribe(samples, language=self.settings.language.split("-")[0])
+        audio = samples.astype(np.float32) / 32768.0
+        segments, _ = self._whisper.transcribe(audio, language=self.settings.language.split("-")[0])
         text = " ".join(segment.text.strip() for segment in segments).strip()
         return text or None
-

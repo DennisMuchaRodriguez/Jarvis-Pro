@@ -51,11 +51,13 @@ Jarvis-Pro/
 ├── data/                        ← TUS datos, edítalos sin tocar código
 │   ├── apps.json                ← programas y juegos (nombre → ejecutable / steam://...)
 │   ├── projects.json            ← tus proyectos (VS Code / Unity)
-│   └── contacts.json            ← contactos de WhatsApp
+│   ├── contacts.json            ← contactos de WhatsApp
+│   └── discord.json             ← amigos y canales de Discord
 ├── jarvis/
 │   ├── config.py                ← lee .env y lo expone como `Settings`
 │   ├── audio/
 │   │   ├── clap_detector.py     ← 👏👏 detecta el doble aplauso (numpy + sounddevice)
+│   │   ├── recorder.py          ← 🎙️ graba tu frase completa (detector de voz + ganancia)
 │   │   ├── speech_to_text.py    ← 🗣️→📝 voz a texto (Google o Whisper local)
 │   │   ├── text_to_speech.py    ← 📝→🗣️ texto a voz (edge-tts, respaldo pyttsx3)
 │   │   └── console.py           ← teclado/consola para el modo --texto
@@ -71,6 +73,7 @@ Jarvis-Pro/
 │       ├── web.py               ← play_youtube, search_google, open_website
 │       ├── projects.py          ← open_project (VS Code / Unity / carpeta)
 │       ├── messaging.py         ← send_whatsapp (pide confirmación)
+│       ├── discord.py           ← send_discord (pide confirmación)
 │       ├── system.py            ← volumen, multimedia, dictado, captura, hora, apagar...
 │       └── assistant.py         ← go_to_sleep
 └── tests/                       ← pruebas automáticas (pytest), no usan micrófono ni API
@@ -90,8 +93,19 @@ Si hay **dos** de esos sonidos separados entre 0.12 y 0.8 s → ¡despierta!
 La lógica (`DoubleClapDetector`) está separada del micrófono (`ClapListener`) para poder probarla con audio
 falso en `tests/test_clap_detector.py`.
 
-### 3.2 El oído 🗣️→📝 (`speech_to_text.py`)
-Usa la librería `SpeechRecognition`, que detecta cuándo empiezas y terminas de hablar. El audio se transcribe con:
+### 3.2 El oído 🗣️→📝 (`recorder.py` + `speech_to_text.py`)
+Primero `recorder.py` graba tu frase **completa**:
+- Suena un **bip**: ya puedes hablar.
+- Mide 300 ms el ruido de tu cuarto y ajusta la ganancia: si el cuarto está en silencio, amplifica mucho
+  (para voces lejanas); si hay ruido, poco (para no confundir el ruido con voz).
+- Un **detector de voz** (webrtcvad, el de Google Meet) revisa cada trozo de 30 ms. Reconoce la voz humana por
+  su forma, no solo por el volumen.
+- Considera que terminaste tras **1.2 s de silencio** (`JARVIS_SILENCE_END`), así que las pausas normales
+  ("pon en YouTube... eh... música para programar") no cortan la orden.
+- Guarda 0.8 s de audio previo para no perder la primera sílaba, y sube el volumen de la grabación antes de
+  transcribirla.
+
+Después la frase se transcribe con:
 - **google** (por defecto): gratis, muy bueno en español, necesita internet.
 - **whisper**: corre en tu PC (sin internet) con `faster-whisper`. Mejor si tienes GPU.
 
@@ -123,6 +137,7 @@ Son funciones normales de Python con un decorador. Claude lee su `description` p
 | `search_google` / `open_website` | Búsquedas y páginas | "Busca cómo hacer un shader en Unity" |
 | `open_project` | Abre proyectos en VS Code o Unity | "Abre mi juego de Unity" |
 | `send_whatsapp` | Envía mensajes (**pide confirmación**) | "Dile a mi mamá que llego en 10 minutos" |
+| `send_discord` | Envía mensajes a amigos o canales (**pide confirmación**) | "Mándale a Carlos por Discord que ya me conecto" |
 | `set_volume` / `media_control` | Volumen y música | "Sube el volumen", "siguiente canción" |
 | `type_text` | Dicta texto donde esté el cursor | "Escribe: hola equipo, ya subí los cambios" |
 | `take_screenshot`, `system_status`, `get_datetime`, `lock_pc` | Utilidades | "¿Cómo va la batería?" |
@@ -153,7 +168,7 @@ Las acciones delicadas (`confirm=` en el decorador) hacen que Jarvis pregunte en
 5. **Selecciona el intérprete**: `Ctrl+Shift+P` → *Python: Select Interpreter* → el que dice `.venv`.
 6. **Clave de API**: entra a <https://platform.claude.com>, crea tu cuenta, agrega créditos en *Billing*
    y crea una clave en *API Keys*. Pégala en `.env` → `ANTHROPIC_API_KEY=sk-ant-...` y guarda (`Ctrl+S`).
-7. **Personaliza** `data/apps.json`, `data/projects.json`, `data/contacts.json` y el resto de `.env`.
+7. **Personaliza** `data/apps.json`, `data/projects.json`, `data/contacts.json`, `data/discord.json` y el resto de `.env`.
    - En los `.json`, las rutas llevan **doble barra**: `"C:\\Users\\Dennis\\Unity\\MiJuego"`. En `.env`, barra normal.
    - Juegos de Steam: clic derecho en el juego → *Propiedades* → *Actualizaciones*: ahí aparece el *ID de la aplicación*
      (`steam://rungameid/ID`).
@@ -169,6 +184,7 @@ Pestaña *Run and Debug* (`Ctrl+Shift+D`): elige una opción en la lista de arri
 | 1. Verificar instalación | `python verificar.py` | Revisa que todo esté listo |
 | 2. Jarvis: modo texto | `python main.py --texto` | Le escribes; prueba el cerebro y las habilidades |
 | 3. Jarvis: voz, despertar con Enter | `python main.py --sin-aplausos` | Prueba micrófono y voz |
+| 3b. Probar micrófono | `python -m jarvis.audio.recorder` | Graba, muestra lo que entendió y guarda `prueba_microfono.wav` |
 | 4. Calibrar aplausos | `python -m jarvis.audio.clap_detector` | Ajusta la sensibilidad |
 | 5. Jarvis completo | `python main.py` | ¡Modo Iron Man! |
 
@@ -176,6 +192,26 @@ Añade `--debug` para ver todo lo que pasa por dentro.
 
 **Calibrar aplausos:** ejecuta el calibrador, aplaude y habla. Pon `JARVIS_CLAP_THRESHOLD` en `.env` un poco
 por debajo del pico de tus aplausos y por encima del pico de tu voz.
+
+## 5b. Discord
+
+Jarvis puede enviar mensajes de dos formas (se configura por destino en `data/discord.json`):
+
+- **Desde tu cuenta (por defecto)**: abre la app de Discord, usa el buscador `Ctrl+K`, escribe el nombre,
+  pega el mensaje y lo envía. Funciona con amigos, grupos y canales. Necesitas la app de Discord con tu
+  sesión iniciada, y **no tocar el teclado** durante esos segundos. Si dices un nombre que no está en el
+  archivo, lo busca igual con ese nombre.
+- **Con webhook** (solo canales de servidores donde tengas permiso): no abre nada y es totalmente fiable, pero
+  el mensaje sale firmado como "Jarvis". Se crea en *Ajustes del servidor → Integraciones → Webhooks → Nuevo
+  webhook → Copiar URL* y se pega en `"webhook"`.
+
+```json
+"carlos": { "aliases": ["carlitos"], "search": "carlos_gamer" },
+"server general": { "aliases": ["general"], "webhook": "https://discord.com/api/webhooks/..." }
+```
+
+Usar tu cuenta con un "self-bot" (token de usuario) va contra las reglas de Discord y pueden banearte; por eso
+Jarvis controla la app como lo harías tú.
 
 ## 6. Cómo añadir una habilidad nueva
 
@@ -233,7 +269,11 @@ Las pruebas no usan el micrófono ni la API (usan audio sintético y un cliente 
 ## 10. Solución de problemas
 | Problema | Solución |
 |---|---|
-| `pip install PyAudio` falla | Actualiza pip (`python -m pip install -U pip`) y usa Python 3.10–3.13, que tienen paquetes listos. |
+| Me corta la orden | Sube `JARVIS_SILENCE_END` en `.env` (1.5 o 2). |
+| No me oye de lejos | Prueba `JARVIS_VAD_MODE=0` y sube el micrófono en Windows: Configuración → Sistema → Sonido → tu micrófono → Volumen 100. En *Más opciones de sonido* → Grabación → Propiedades → Niveles, activa "Aumento del micrófono" si existe. |
+| Usa el micrófono equivocado | `python verificar.py` lista los micrófonos; pon el número en `JARVIS_MIC_DEVICE`. |
+| Graba ruido (ventilador, música) | Sube `JARVIS_VAD_MODE` a 2 o 3. |
+| Discord escribe en el chat equivocado | Pon el nombre exacto de usuario en `search` dentro de `data/discord.json`. |
 | No detecta aplausos / se despierta solo | Calibra con `python -m jarvis.audio.clap_detector` y ajusta `JARVIS_CLAP_THRESHOLD`. |
 | No entiende lo que digo | Revisa `JARVIS_LANGUAGE`, acércate al micrófono, o prueba `JARVIS_STT_ENGINE=whisper`. |
 | WhatsApp no envía | Abre WhatsApp Desktop e inicia sesión antes; o usa `WHATSAPP_MODE=web`. |

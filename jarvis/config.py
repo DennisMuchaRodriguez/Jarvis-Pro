@@ -49,6 +49,11 @@ class Settings:
     voice: str
     listen_timeout: float
     phrase_time_limit: float
+    silence_end: float
+    vad_aggressiveness: int
+    mic_device: str
+    mic_max_gain: float
+    listen_beep: bool
     idle_rounds: int
     # Aplausos
     clap_threshold: float
@@ -57,6 +62,7 @@ class Settings:
     # Programas
     unity_editor_path: str
     whatsapp_mode: str
+    discord_open_wait: float
 
 
 def load_settings() -> Settings:
@@ -70,12 +76,18 @@ def load_settings() -> Settings:
         stt_engine=_str("JARVIS_STT_ENGINE", "google"),
         whisper_model=_str("JARVIS_WHISPER_MODEL", "small"),
         voice=_str("JARVIS_VOICE", "es-MX-JorgeNeural"),
-        listen_timeout=_float("JARVIS_LISTEN_TIMEOUT", 6),
-        phrase_time_limit=_float("JARVIS_PHRASE_TIME_LIMIT", 15),
+        listen_timeout=_float("JARVIS_LISTEN_TIMEOUT", 8),
+        phrase_time_limit=_float("JARVIS_PHRASE_TIME_LIMIT", 20),
+        silence_end=_float("JARVIS_SILENCE_END", 1.2),
+        vad_aggressiveness=_int("JARVIS_VAD_MODE", 1),
+        mic_device=_str("JARVIS_MIC_DEVICE", ""),
+        mic_max_gain=_float("JARVIS_MIC_MAX_GAIN", 8),
+        listen_beep=_bool("JARVIS_LISTEN_BEEP", True),
         idle_rounds=_int("JARVIS_IDLE_ROUNDS", 2),
         clap_threshold=_float("JARVIS_CLAP_THRESHOLD", 0.30),
         clap_min_gap=_float("JARVIS_CLAP_MIN_GAP", 0.12),
         clap_max_gap=_float("JARVIS_CLAP_MAX_GAP", 0.80),
         unity_editor_path=_str("UNITY_EDITOR_PATH", ""),
         whatsapp_mode=_str("WHATSAPP_MODE", "desktop"),
+        discord_open_wait=_float("DISCORD_OPEN_WAIT", 15),
     )

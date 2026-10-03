@@ -48,7 +48,7 @@ def check_packages() -> bool:
     print("\n2. Librerías")
     packages = {
         "anthropic": "anthropic", "dotenv": "python-dotenv", "numpy": "numpy",
-        "sounddevice": "sounddevice", "speech_recognition": "SpeechRecognition", "pyaudio": "PyAudio",
+        "sounddevice": "sounddevice", "webrtcvad": "webrtcvad-wheels", "speech_recognition": "SpeechRecognition",
         "edge_tts": "edge-tts", "pygame": "pygame", "pyttsx3": "pyttsx3",
         "pyautogui": "pyautogui", "pyperclip": "pyperclip", "psutil": "psutil",
     }
@@ -94,7 +94,7 @@ def check_api_key() -> None:
 
 def check_data() -> None:
     print("\n4. Tus datos (carpeta data/)")
-    for name in ("apps.json", "projects.json", "contacts.json"):
+    for name in ("apps.json", "projects.json", "contacts.json", "discord.json"):
         try:
             data = json.loads((ROOT / "data" / name).read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
@@ -136,8 +136,17 @@ def check_microphone() -> None:
         warn("Se revisará cuando instales las librerías.")
         return
     try:
-        device = sd.query_devices(kind="input")
-        ok(f"Micrófono predeterminado: {device['name']}")
+        from jarvis.audio.recorder import parse_device
+        from jarvis.config import load_settings
+
+        chosen = parse_device(load_settings().mic_device)
+        device = sd.query_devices(chosen, kind="input")
+        ok(f"Micrófono en uso: {device['name']}")
+        print("       Micrófonos disponibles (para JARVIS_MIC_DEVICE en .env):")
+        default_api = sd.query_devices(kind="input")["hostapi"]
+        for index, info in enumerate(sd.query_devices()):
+            if info["max_input_channels"] > 0 and info["hostapi"] == default_api:
+                print(f"         {index:>3}: {info['name']}")
     except Exception as exc:
         bad(f"No pude acceder al micrófono ({exc})",
             "Conecta un micrófono y en Windows: Configuración > Privacidad > Micrófono > permitir apps de escritorio")

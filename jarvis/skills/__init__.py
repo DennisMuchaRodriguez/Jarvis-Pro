@@ -10,6 +10,6 @@ from jarvis.skills.registry import ToolRegistry, registry
 
 def load_skills() -> ToolRegistry:
     # Importar cada módulo ejecuta sus decoradores y registra sus habilidades.
-    from jarvis.skills import apps, assistant, messaging, projects, system, web  # noqa: F401
+    from jarvis.skills import apps, assistant, discord, messaging, projects, system, web  # noqa: F401
 
     return registry

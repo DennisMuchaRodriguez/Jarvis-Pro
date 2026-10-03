@@ -4,9 +4,9 @@ python-dotenv>=1.0
 
 # Oído: aplausos + reconocimiento de voz
 numpy>=1.26
-sounddevice>=0.4.6
-SpeechRecognition>=3.10
-PyAudio>=0.2.14          # lo usa SpeechRecognition para abrir el micrófono
+sounddevice>=0.4.6       # abre el micrófono
+webrtcvad-wheels>=2.0.14 # detecta cuándo hay voz humana (no solo volumen)
+SpeechRecognition>=3.10  # envía la frase al reconocimiento de Google
 
 # Voz
 edge-tts>=6.1            # voces neuronales gratis de Microsoft (requiere internet)

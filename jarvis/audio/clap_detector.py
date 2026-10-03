@@ -100,7 +100,10 @@ class DoubleClapDetector:
 class ClapListener:
     """Abre el micrófono y bloquea hasta escuchar un doble aplauso."""
 
-    def __init__(self, threshold: float, min_gap: float, max_gap: float) -> None:
+    def __init__(self, threshold: float, min_gap: float, max_gap: float, device: str = "") -> None:
+        from jarvis.audio.recorder import parse_device
+
+        self.device = parse_device(device)
         self.detector = DoubleClapDetector(threshold=threshold, min_gap=min_gap, max_gap=max_gap)
 
     def wait_for_double_clap(self) -> None:
@@ -119,6 +122,7 @@ class ClapListener:
             channels=1,
             dtype="float32",
             blocksize=int(SAMPLE_RATE * BLOCK_SECONDS),
+            device=self.device,
             callback=on_audio,
         ):
             while True:
@@ -133,6 +137,10 @@ def _calibrate() -> None:
     """Muestra el volumen del micrófono en vivo para elegir un buen umbral."""
     import sounddevice as sd
 
+    from jarvis.audio.recorder import parse_device
+    from jarvis.config import load_settings
+
+    device = parse_device(load_settings().mic_device)
     print("Aplaude varias veces y habla normal. Fíjate en el pico de los aplausos (Ctrl+C para salir).")
     print("Pon JARVIS_CLAP_THRESHOLD un poco por debajo del pico de tus aplausos y por encima de tu voz.\n")
 
@@ -142,7 +150,7 @@ def _calibrate() -> None:
         print(f"\rpico {peak:0.2f} |{bar:<50}|", end="", flush=True)
 
     with sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="float32",
-                        blocksize=int(SAMPLE_RATE * BLOCK_SECONDS), callback=on_audio):
+                        blocksize=int(SAMPLE_RATE * BLOCK_SECONDS), device=device, callback=on_audio):
         try:
             while True:
                 sd.sleep(1000)

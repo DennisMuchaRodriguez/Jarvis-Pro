@@ -76,3 +76,11 @@ def press_keys(*keys: str, presses: int = 1) -> None:
         pyautogui.press(keys[0], presses=presses, interval=0.02)
     else:
         pyautogui.hotkey(*keys)
+
+
+def paste_text(text: str) -> None:
+    """Escribe `text` donde esté el cursor. Usa el portapapeles porque pyautogui no escribe acentos ni ñ."""
+    import pyperclip
+
+    pyperclip.copy(text)
+    press_keys("command" if IS_MAC else "ctrl", "v")

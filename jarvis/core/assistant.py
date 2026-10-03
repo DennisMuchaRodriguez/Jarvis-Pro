@@ -57,7 +57,9 @@ class Jarvis:
         if use_claps and not text_mode:
             from jarvis.audio.clap_detector import ClapListener
 
-            self.claps = ClapListener(settings.clap_threshold, settings.clap_min_gap, settings.clap_max_gap)
+            self.claps = ClapListener(
+                settings.clap_threshold, settings.clap_min_gap, settings.clap_max_gap, settings.mic_device
+            )
 
     # ---- ciclo principal -------------------------------------------------
     def run(self) -> None:

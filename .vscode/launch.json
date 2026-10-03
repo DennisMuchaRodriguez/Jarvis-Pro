@@ -29,6 +29,14 @@
       "console": "integratedTerminal"
     },
     {
+      "name": "3b. Probar micrófono (graba y muestra lo que entiende)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "jarvis.audio.recorder",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
       "name": "4. Calibrar aplausos",
       "type": "debugpy",
       "request": "launch",

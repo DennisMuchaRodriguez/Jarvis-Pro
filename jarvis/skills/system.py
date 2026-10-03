@@ -5,7 +5,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-from jarvis.skills._helpers import IS_MAC, IS_WINDOWS, press_keys
+from jarvis.skills._helpers import IS_MAC, IS_WINDOWS, paste_text, press_keys
 from jarvis.skills.registry import registry
 
 DAYS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
@@ -52,11 +52,7 @@ def media_control(action: str) -> str:
     parameters={"text": {"type": "string"}},
 )
 def type_text(text: str) -> str:
-    import pyperclip
-
-    # Pegamos desde el portapapeles porque pyautogui.write no soporta acentos ni la ñ.
-    pyperclip.copy(text)
-    press_keys("command" if IS_MAC else "ctrl", "v")
+    paste_text(text)
     return "Texto escrito."
 
 
