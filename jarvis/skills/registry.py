@@ -6,19 +6,24 @@ El decorador guarda:
   - parameters: qué datos necesita (formato JSON Schema).
   - confirm: (opcional) pregunta que Jarvis te hará en voz alta antes de
     ejecutarla, para acciones delicadas como enviar mensajes o apagar el PC.
+    Puede ser un texto con {campos} o una función que recibe los argumentos.
+  - quick: True si es una ACCIÓN cuyo resultado se puede decir tal cual
+    ("Abriendo Spotify."). Así Jarvis no vuelve a preguntarle a Claude qué
+    decir después, y responde mucho más rápido. Las consultas (hora, batería...)
+    no son quick: Claude necesita leer el resultado para contestarte.
 
 Ejemplo:
 
     @registry.tool(
         name="open_calculator",
         description="Abre la calculadora.",
+        quick=True,
     )
     def open_calculator() -> str:
         subprocess.Popen("calc")
         return "Calculadora abierta."
 
-Lo que devuelve la función (un texto) se le envía a Claude como resultado,
-y Claude lo usa para contestarte.
+Lo que devuelve la función (un texto) se le envía a Claude como resultado.
 """
 from __future__ import annotations
 
@@ -37,7 +42,8 @@ class Tool:
     description: str
     func: Callable[..., str]
     parameters: dict[str, dict] = field(default_factory=dict)
-    confirm: str | None = None
+    confirm: str | Callable[..., str] | None = None
+    quick: bool = False
 
     def definition(self) -> dict[str, Any]:
         return {
@@ -52,6 +58,19 @@ class Tool:
             "strict": True,  # Claude siempre enviará argumentos que cumplan el esquema
         }
 
+    def confirmation_question(self, args: dict[str, Any]) -> str | None:
+        if self.confirm is None:
+            return None
+        return self.confirm(**args) if callable(self.confirm) else self.confirm.format(**args)
+
+
+@dataclass
+class ToolOutcome:
+    text: str               # resultado para Claude (y para decirlo en voz alta si es quick)
+    is_error: bool = False
+    declined: bool = False  # el usuario dijo "no" a la confirmación
+    quick: bool = False
+
 
 class ToolRegistry:
     def __init__(self) -> None:
@@ -62,12 +81,13 @@ class ToolRegistry:
         name: str,
         description: str,
         parameters: dict[str, dict] | None = None,
-        confirm: str | None = None,
+        confirm: str | Callable[..., str] | None = None,
+        quick: bool = False,
     ) -> Callable[[Callable[..., str]], Callable[..., str]]:
         def decorator(func: Callable[..., str]) -> Callable[..., str]:
             if name in self._tools:
                 raise ValueError(f"Habilidad duplicada: {name}")
-            self._tools[name] = Tool(name, description, func, parameters or {}, confirm)
+            self._tools[name] = Tool(name, description, func, parameters or {}, confirm, quick)
             return func
 
         return decorator
@@ -82,19 +102,19 @@ class ToolRegistry:
         # Orden estable: así el prompt cacheado no cambia entre peticiones.
         return [self._tools[name].definition() for name in sorted(self._tools)]
 
-    def execute(self, name: str, args: dict[str, Any], confirm: ConfirmFn) -> tuple[str, bool]:
-        """Ejecuta una habilidad. Devuelve (resultado, es_error)."""
+    def execute(self, name: str, args: dict[str, Any], confirm: ConfirmFn) -> ToolOutcome:
         tool = self._tools.get(name)
         if tool is None:
-            return f"La habilidad '{name}' no existe.", True
-        if tool.confirm and not confirm(tool.confirm.format(**args)):
-            return "El usuario NO confirmó la acción; no se realizó.", False
+            return ToolOutcome(f"La habilidad '{name}' no existe.", is_error=True)
+        question = tool.confirmation_question(args)
+        if question and not confirm(question):
+            return ToolOutcome("El usuario NO confirmó la acción; no se realizó.", declined=True, quick=True)
         log.info("Ejecutando %s(%s)", name, args)
         try:
-            return str(tool.func(**args)), False
+            return ToolOutcome(str(tool.func(**args)), quick=tool.quick)
         except Exception as exc:
             log.exception("Falló la habilidad %s", name)
-            return f"Error al ejecutar {name}: {exc}", True
+            return ToolOutcome(f"Error al ejecutar {name}: {exc}", is_error=True)
 
 
 registry = ToolRegistry()

@@ -11,6 +11,7 @@ SLEEP_REQUESTED = threading.Event()
 
 @registry.tool(
     name="go_to_sleep",
+    quick=True,
     description=(
         "Termina la conversación y vuelve al modo reposo (esperando aplausos). Úsala cuando "
         "el usuario se despida, dé las gracias como cierre o pida que descanses."
@@ -18,4 +19,4 @@ SLEEP_REQUESTED = threading.Event()
 )
 def go_to_sleep() -> str:
     SLEEP_REQUESTED.set()
-    return "Entrando en reposo tras esta respuesta. Despídete en pocas palabras."
+    return "Hasta luego. Aplauda dos veces si me necesita."

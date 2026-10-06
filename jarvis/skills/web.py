@@ -20,6 +20,7 @@ def first_youtube_video(query: str) -> str | None:
 
 @registry.tool(
     name="play_youtube",
+    quick=True,
     description="Busca en YouTube y reproduce el primer video (canciones, tutoriales, trailers, etc.).",
     parameters={"query": {"type": "string", "description": "Qué buscar en YouTube."}},
 )
@@ -30,23 +31,25 @@ def play_youtube(query: str) -> str:
         video_id = None
     if video_id:
         webbrowser.open(f"https://www.youtube.com/watch?v={video_id}")
-        return f"Reproduciendo en YouTube el primer resultado de '{query}'."
+        return f"Reproduciendo {query} en YouTube."
     webbrowser.open("https://www.youtube.com/results?search_query=" + quote_plus(query))
-    return f"Abrí la búsqueda de '{query}' en YouTube (no pude elegir un video automáticamente)."
+    return f"Abrí la búsqueda de {query} en YouTube; elija el video que prefiera."
 
 
 @registry.tool(
     name="search_google",
+    quick=True,
     description="Abre una búsqueda de Google en el navegador para que el usuario vea los resultados.",
     parameters={"query": {"type": "string", "description": "Texto a buscar."}},
 )
 def search_google(query: str) -> str:
     webbrowser.open("https://www.google.com/search?q=" + quote_plus(query))
-    return f"Busqué '{query}' en Google."
+    return f"Buscando {query} en Google."
 
 
 @registry.tool(
     name="open_website",
+    quick=True,
     description="Abre una página web en el navegador.",
     parameters={"url": {"type": "string", "description": "Dirección, por ejemplo 'github.com'."}},
 )
@@ -54,4 +57,4 @@ def open_website(url: str) -> str:
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
     webbrowser.open(url)
-    return f"Abrí {url}."
+    return "Página abierta."

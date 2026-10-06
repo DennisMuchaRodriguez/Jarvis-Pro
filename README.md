@@ -65,7 +65,11 @@ Jarvis-Pro/
 │   │   ├── prompts.py           ← personalidad de Jarvis (system prompt)
 │   │   └── llm.py               ← ciclo de conversación con Claude + herramientas
 │   ├── core/
-│   │   └── assistant.py         ← máquina de estados: dormido → escuchando → pensando
+│   │   ├── assistant.py         ← máquina de estados: dormido → escuchando → pensando
+│   │   └── events.py            ← buzón donde los servicios dejan avisos para Jarvis
+│   ├── services/                ← trabajan en segundo plano
+│   │   ├── scheduler.py         ← ⏰ mensajes programados (jarvis_datos/programados.json)
+│   │   └── notifications.py     ← 🔔 lee las notificaciones de Windows (mensajes recibidos)
 │   └── skills/                  ← lo que Jarvis SABE HACER
 │       ├── registry.py          ← decorador @registry.tool y ejecución segura
 │       ├── _helpers.py          ← abrir cosas, buscar nombres parecidos
@@ -73,7 +77,9 @@ Jarvis-Pro/
 │       ├── web.py               ← play_youtube, search_google, open_website
 │       ├── projects.py          ← open_project (VS Code / Unity / carpeta)
 │       ├── messaging.py         ← send_whatsapp (pide confirmación)
-│       ├── discord.py           ← send_discord (pide confirmación)
+│       ├── discord.py           ← send_discord, discord_voice (mute / ensordecer)
+│       ├── scheduling.py        ← schedule_message, list/cancel_scheduled_message
+│       ├── inbox.py             ← get_recent_messages
 │       ├── system.py            ← volumen, multimedia, dictado, captura, hora, apagar...
 │       └── assistant.py         ← go_to_sleep
 └── tests/                       ← pruebas automáticas (pytest), no usan micrófono ni API
@@ -120,12 +126,22 @@ Este es el corazón. En cada orden:
 Detalles importantes:
 - **Memoria**: recuerda la conversación mientras está despierto ("ábrelo otra vez" funciona). Al dormirse, la olvida.
 - **Búsqueda web**: puede buscar en internet para preguntas de actualidad (`JARVIS_WEB_SEARCH`).
-- **Velocidad**: `JARVIS_EFFORT=low` hace que piense menos y responda más rápido, ideal para voz.
-- **Caché de prompts**: la personalidad y las herramientas se cachean → peticiones más baratas.
+- **Hora actual**: cada orden lleva la fecha y hora, así entiende "a las 9" o "en 20 minutos".
+
+**Trucos de velocidad** (ver también § 5d):
+- **Streaming**: Jarvis dice cada frase en cuanto Claude la escribe, sin esperar la respuesta completa.
+- **Acciones rápidas**: las habilidades marcadas `quick=True` (abrir, reproducir, enviar...) anuncian su
+  resultado ("Abriendo Spotify.") sin una segunda petición a Claude. Ahorra un viaje completo a la API.
+- **Caché de prompts precalentado**: al despertar, prepara el caché en segundo plano mientras te saluda.
+- **`JARVIS_EFFORT=low`** y la instrucción "responde sin deliberar" para que piense lo justo.
 
 ### 3.4 La voz 📝→🗣️ (`text_to_speech.py`)
 `edge-tts` usa las voces neuronales de Microsoft (gratis y muy naturales, ej. `es-MX-JorgeNeural`). Si no hay
 internet, usa `pyttsx3` con las voces de Windows.
+
+Trabaja en segundo plano: un hilo genera el audio y otro lo reproduce, así la siguiente frase se prepara
+mientras suena la anterior, y Jarvis ejecuta la orden mientras habla. Las frases ya dichas se guardan en una
+carpeta temporal, así que los saludos y respuestas frecuentes suenan al instante.
 
 ### 3.5 Las habilidades 🛠️ (`jarvis/skills/`)
 Son funciones normales de Python con un decorador. Claude lee su `description` para saber cuándo usarlas.
@@ -137,7 +153,11 @@ Son funciones normales de Python con un decorador. Claude lee su `description` p
 | `search_google` / `open_website` | Búsquedas y páginas | "Busca cómo hacer un shader en Unity" |
 | `open_project` | Abre proyectos en VS Code o Unity | "Abre mi juego de Unity" |
 | `send_whatsapp` | Envía mensajes (**pide confirmación**) | "Dile a mi mamá que llego en 10 minutos" |
-| `send_discord` | Envía mensajes a amigos o canales (**pide confirmación**) | "Mándale a Carlos por Discord que ya me conecto" |
+| `send_discord` | Envía mensajes a amigos, grupos o canales de servidores (**pide confirmación**) | "Mándale a Carlos por Discord que ya me conecto", "escribe en el general del servidor: ¿quién juega?" |
+| `discord_voice` | Te mutea o ensordece en Discord | "Mutéame", "ensordéceme" |
+| `schedule_message` | Programa un mensaje de WhatsApp o Discord (**pide confirmación**) | "A las 9 mándale a mi mamá que ya salgo" |
+| `list_scheduled_messages` / `cancel_scheduled_message` | Ver o cancelar programados | "¿Qué mensajes tengo programados?", "cancela el 2" |
+| `get_recent_messages` | Te dice los mensajes que te llegaron | "¿Quién me escribió?" |
 | `set_volume` / `media_control` | Volumen y música | "Sube el volumen", "siguiente canción" |
 | `type_text` | Dicta texto donde esté el cursor | "Escribe: hola equipo, ya subí los cambios" |
 | `take_screenshot`, `system_status`, `get_datetime`, `lock_pc` | Utilidades | "¿Cómo va la batería?" |
@@ -153,6 +173,11 @@ DORMIDO ──👏👏──▶ saluda ──▶ ESCUCHA ──frase──▶ PI
 ```
 Las acciones delicadas (`confirm=` en el decorador) hacen que Jarvis pregunte en voz alta
 "¿Envío a mamá el mensaje...?" y solo continúa si dices "sí".
+
+Los **servicios** (mensajes programados y avisos de mensajes) corren en hilos aparte, pero nunca hablan ni
+tocan el teclado por su cuenta: dejan un aviso en `core/events.py` y el núcleo lo atiende cuando el micrófono
+y los altavoces están libres (mientras duerme, o entre una orden y otra). Así Jarvis no habla encima de sí
+mismo ni graba su propia voz como si fuera una orden.
 
 ---
 
@@ -195,23 +220,63 @@ por debajo del pico de tus aplausos y por encima del pico de tu voz.
 
 ## 5b. Discord
 
-Jarvis puede enviar mensajes de dos formas (se configura por destino en `data/discord.json`):
+**Enviar mensajes.** Cada destino de `data/discord.json` usa una de estas formas:
 
-- **Desde tu cuenta (por defecto)**: abre la app de Discord, usa el buscador `Ctrl+K`, escribe el nombre,
-  pega el mensaje y lo envía. Funciona con amigos, grupos y canales. Necesitas la app de Discord con tu
-  sesión iniciada, y **no tocar el teclado** durante esos segundos. Si dices un nombre que no está en el
-  archivo, lo busca igual con ese nombre.
-- **Con webhook** (solo canales de servidores donde tengas permiso): no abre nada y es totalmente fiable, pero
-  el mensaje sale firmado como "Jarvis". Se crea en *Ajustes del servidor → Integraciones → Webhooks → Nuevo
-  webhook → Copiar URL* y se pega en `"webhook"`.
+| Campo | Para qué | Cómo se envía |
+|---|---|---|
+| `link` | **Un canal concreto de un servidor** o un chat concreto | Abre ese canal en la app, pega el mensaje y lo envía desde tu cuenta. Es lo más exacto. En Discord: clic derecho sobre el canal → **Copiar enlace**. |
+| `search` | Amigos y grupos | Usa el buscador `Ctrl+K` de Discord. Prefijos: `@usuario`, `#canal`. Desde tu cuenta. |
+| `webhook` | Canales donde tengas permiso de gestionar webhooks | Sin abrir la app, 100% fiable, pero firmado "Jarvis". *Ajustes del servidor → Integraciones → Webhooks*. |
 
 ```json
-"carlos": { "aliases": ["carlitos"], "search": "carlos_gamer" },
-"server general": { "aliases": ["general"], "webhook": "https://discord.com/api/webhooks/..." }
+"carlos":       { "aliases": ["carlitos"], "search": "@carlos_gamer" },
+"general gamers": { "aliases": ["el general"], "link": "https://discord.com/channels/111.../222..." },
+"chat del equipo": { "aliases": ["el equipo"], "link": "https://discord.com/channels/111.../333..." }
 ```
+Si dices un destino que no está en el archivo, Jarvis lo busca con `Ctrl+K`. Con `link` y `search` necesitas la
+app de Discord abierta con tu sesión, y **no tocar el teclado** esos segundos.
+
+**Mutearte y ensordecerte.** Discord tiene `Ctrl+Shift+M` / `Ctrl+Shift+D`, pero solo funcionan con Discord al
+frente (Jarvis lo traería al frente y te sacaría del juego). Mejor crea **atajos globales**:
+1. Discord → ⚙️ Ajustes de usuario → **Atajos de teclado** → *Añadir un atajo*.
+2. Acción **"Alternar silencio"** con `Ctrl+Shift+F9`, y otro **"Alternar ensordecer"** con `Ctrl+Shift+F10`.
+3. En `.env`: `DISCORD_MUTE_HOTKEY=ctrl+shift+f9` y `DISCORD_DEAFEN_HOTKEY=ctrl+shift+f10`.
+
+Son interruptores: "mutéame" otra vez te desmutea.
 
 Usar tu cuenta con un "self-bot" (token de usuario) va contra las reglas de Discord y pueden banearte; por eso
 Jarvis controla la app como lo harías tú.
+
+## 5c. Mensajes programados y avisos de mensajes
+
+**Programar:** *"Jarvis, a las 9 de la noche mándale a mi papá por WhatsApp que ya voy"*, *"mañana a las 8
+escribe en el general del servidor: buenos días"*. Te pide confirmación y lo guarda en `jarvis_datos/` (no se
+sube a GitHub). También: *"¿qué mensajes tengo programados?"*, *"cancela el mensaje 2"*.
+- **Jarvis tiene que estar encendido** a esa hora (puede estar dormido). Si estaba apagado y el retraso es de
+  menos de 2 horas, lo envía al encenderse; si es más, te avisa de que no pudo.
+- Antes de enviarlo te avisa en voz alta, porque usará el teclado unos segundos.
+
+**Avisos de mensajes recibidos:** cuando te llega un WhatsApp o un mensaje de Discord, Jarvis dice
+*"Mensaje de Mamá por WhatsApp: ¿vienes a cenar?"*, esté dormido o despierto. También puedes preguntarle
+*"¿quién me escribió?"*.
+- Funciona leyendo las **notificaciones de Windows**, así que las apps deben tener las notificaciones activadas
+  (en Windows y dentro de la app). Discord no notifica mientras lo tienes en primer plano, y el modo "No
+  molestar" las silencia.
+- Elige las apps con `JARVIS_NOTIFY_APPS` (por ejemplo `whatsapp,discord,telegram`) y si lee el texto o solo
+  quién escribió con `JARVIS_NOTIFY_READ_TEXT`.
+
+## 5d. Velocidad: qué la determina y cómo ajustarla
+
+Tiempo de una orden ≈ **fin de tu frase** (`JARVIS_SILENCE_END`, 1.2 s) + **transcripción** (~0.5–1 s) +
+**Claude** (lo que más pesa) + **voz** (~0.5 s, o nada si la frase ya está en caché).
+
+| Ajuste en `.env` | Efecto |
+|---|---|
+| `JARVIS_MODEL=claude-sonnet-5-5` | Responde notablemente más rápido que Opus y cuesta la mitad; muy bueno para órdenes de voz. **Recomendado si buscas velocidad.** |
+| `JARVIS_MODEL=claude-haiku-4-5` | El más rápido y barato, pero se equivoca más con órdenes complicadas. |
+| `JARVIS_EFFORT=low` | Ya viene así: piensa lo justo. `medium` = más listo pero más lento. |
+| `JARVIS_SILENCE_END=0.9` | Termina de escucharte antes. Bájalo solo si no haces pausas largas al hablar. |
+| `JARVIS_WEB_SEARCH=false` | Quita la búsqueda web (ahorra un poco en cada petición). |
 
 ## 6. Cómo añadir una habilidad nueva
 
@@ -225,6 +290,7 @@ from jarvis.skills.registry import registry
 @registry.tool(
     name="open_downloads",
     description="Abre la carpeta de Descargas del usuario.",
+    quick=True,  # es una acción: Jarvis dice el resultado sin volver a preguntarle a Claude
 )
 def open_downloads() -> str:
     open_target(str(Path.home() / "Downloads"))
@@ -258,7 +324,6 @@ Las pruebas no usan el micrófono ni la API (usan audio sintético y un cliente 
 
 ## 9. Ideas para seguir (roadmap)
 - **Palabra de activación "Jarvis"** además de los aplausos (con `openwakeword` o `pvporcupine`).
-- **Respuestas en streaming**: empezar a hablar mientras Claude todavía escribe (menos espera).
 - **Interfaz holográfica en Unity** 🎮: como ya sabes Unity, puedes hacer el HUD de Jarvis (el círculo azul
   que se anima cuando habla). Python enviaría el estado (`dormido`, `escuchando`, `hablando`) y el texto por
   WebSocket o UDP local, y Unity lo dibuja. El cerebro sigue en Python; Unity solo es la "cara".
@@ -273,7 +338,11 @@ Las pruebas no usan el micrófono ni la API (usan audio sintético y un cliente 
 | No me oye de lejos | Prueba `JARVIS_VAD_MODE=0` y sube el micrófono en Windows: Configuración → Sistema → Sonido → tu micrófono → Volumen 100. En *Más opciones de sonido* → Grabación → Propiedades → Niveles, activa "Aumento del micrófono" si existe. |
 | Usa el micrófono equivocado | `python verificar.py` lista los micrófonos; pon el número en `JARVIS_MIC_DEVICE`. |
 | Graba ruido (ventilador, música) | Sube `JARVIS_VAD_MODE` a 2 o 3. |
-| Discord escribe en el chat equivocado | Pon el nombre exacto de usuario en `search` dentro de `data/discord.json`. |
+| Discord escribe en el chat equivocado | Usa `link` (enlace del canal) o el nombre exacto con `@` en `search` dentro de `data/discord.json`. |
+| Discord abre el canal pero no escribe el mensaje | Sube `DISCORD_OPEN_WAIT`; si sigue, usa `search` con `#canal` en lugar de `link`. |
+| "Mutéame" no hace nada | Crea los atajos globales en Discord (§ 5b) iguales a los de `.env`. |
+| No me avisa de mensajes | Activa las notificaciones de WhatsApp/Discord en Windows y en la app; desactiva "No molestar". `python verificar.py` revisa que se puedan leer. |
+| No envió un mensaje programado | Jarvis debe estar encendido a esa hora; mira `jarvis_datos/programados.json`. |
 | No detecta aplausos / se despierta solo | Calibra con `python -m jarvis.audio.clap_detector` y ajusta `JARVIS_CLAP_THRESHOLD`. |
 | No entiende lo que digo | Revisa `JARVIS_LANGUAGE`, acércate al micrófono, o prueba `JARVIS_STT_ENGINE=whisper`. |
 | WhatsApp no envía | Abre WhatsApp Desktop e inicia sesión antes; o usa `WHATSAPP_MODE=web`. |

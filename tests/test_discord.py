@@ -17,3 +17,17 @@ def test_unknown_destination_is_searched_in_the_app(monkeypatch):
     discord.send_discord("Carlos", "ya entro")
     discord.send_discord("Pedro", "hola")
     assert searched == [("carlos_gamer", "ya entro"), ("Pedro", "hola")]
+
+
+def test_channel_links_open_in_the_app(monkeypatch):
+    assert discord.app_link("https://discord.com/channels/111/222") == "discord://-/channels/111/222"
+    assert discord.app_link("https://ptb.discord.com/channels/@me/333") == "discord://-/channels/@me/333"
+    linked = []
+    monkeypatch.setattr(discord, "DESTINATIONS", {"anuncios": {"aliases": [], "link": "https://discord.com/channels/1/2"}})
+    monkeypatch.setattr(discord, "send_with_link", lambda link, msg: linked.append(link))
+    discord.send_discord("#anuncios", "hola")
+    assert linked == ["https://discord.com/channels/1/2"]
+
+
+def test_parse_hotkey():
+    assert discord.parse_hotkey("Ctrl + Shift + F9") == ["ctrl", "shift", "f9"]

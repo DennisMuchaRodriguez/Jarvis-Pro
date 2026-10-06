@@ -1,6 +1,7 @@
 {
-  "_comentario": "Destinos de Discord. search = lo que Jarvis escribe en el buscador Ctrl+K (nombre de usuario, apodo o canal). webhook = URL de webhook (opcional, solo canales de servidores). Si no pones webhook, se envía desde tu cuenta con la app.",
+  "_comentario": "Destinos de Discord. Usa UNO de estos campos por destino: link = enlace del canal o chat (clic derecho > Copiar enlace), el más exacto para servidores; search = texto para el buscador Ctrl+K (@usuario, #canal); webhook = URL de webhook (sale firmado 'Jarvis'). Todo desde tu cuenta salvo webhook.",
 
-  "mi amigo": { "aliases": ["amigo"], "search": "nombre_de_usuario_de_tu_amigo" },
-  "canal general": { "aliases": ["general", "el servidor"], "search": "general", "webhook": "" }
+  "mi amigo": { "aliases": ["amigo"], "search": "@nombre_de_usuario_de_tu_amigo" },
+  "general del servidor": { "aliases": ["general", "el servidor"], "link": "https://discord.com/channels/111111111111111111/222222222222222222" },
+  "anuncios": { "aliases": [], "webhook": "" }
 }

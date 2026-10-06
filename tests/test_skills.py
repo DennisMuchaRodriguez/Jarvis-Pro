@@ -32,7 +32,8 @@ def test_is_affirmative():
 def test_all_skills_have_valid_definitions():
     registry = load_skills()
     names = registry.names()
-    assert {"open_app", "play_youtube", "send_whatsapp", "go_to_sleep"} <= set(names)
+    assert {"open_app", "play_youtube", "send_whatsapp", "go_to_sleep", "send_discord", "discord_voice",
+            "schedule_message", "get_recent_messages"} <= set(names)
     for definition in registry.definitions():
         schema = definition["input_schema"]
         assert schema["additionalProperties"] is False
@@ -49,11 +50,24 @@ def test_confirmation_blocks_sensitive_action():
         return "enviado"
 
     questions = []
-    output, is_error = registry.execute("send", {"to": "Ana"}, confirm=lambda q: questions.append(q) or False)
-    assert questions == ["¿Enviar a Ana?"] and calls == [] and not is_error
+    outcome = registry.execute("send", {"to": "Ana"}, confirm=lambda q: questions.append(q) or False)
+    assert questions == ["¿Enviar a Ana?"] and calls == [] and outcome.declined and not outcome.is_error
 
-    output, _ = registry.execute("send", {"to": "Ana"}, confirm=lambda q: True)
-    assert output == "enviado" and calls == ["Ana"]
+    outcome = registry.execute("send", {"to": "Ana"}, confirm=lambda q: True)
+    assert outcome.text == "enviado" and calls == ["Ana"]
+
+
+def test_confirmation_can_be_built_from_arguments():
+    registry = ToolRegistry()
+
+    @registry.tool(name="x", description="x", parameters={"n": {"type": "integer"}},
+                   confirm=lambda n: f"¿Hago {n * 2}?")
+    def x(n: int) -> str:
+        return "ok"
+
+    questions = []
+    registry.execute("x", {"n": 21}, confirm=lambda q: questions.append(q) or True)
+    assert questions == ["¿Hago 42?"]
 
 
 def test_tool_errors_are_reported_not_raised():
@@ -63,5 +77,5 @@ def test_tool_errors_are_reported_not_raised():
     def boom() -> str:
         raise RuntimeError("falló")
 
-    output, is_error = registry.execute("boom", {}, confirm=lambda q: True)
-    assert is_error and "falló" in output
+    outcome = registry.execute("boom", {}, confirm=lambda q: True)
+    assert outcome.is_error and "falló" in outcome.text

@@ -13,6 +13,8 @@ from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data"
+# Datos que genera Jarvis (mensajes programados...). No se suben a GitHub.
+PRIVATE_DIR = ROOT_DIR / "jarvis_datos"
 
 load_dotenv(ROOT_DIR / ".env")
 
@@ -63,6 +65,11 @@ class Settings:
     unity_editor_path: str
     whatsapp_mode: str
     discord_open_wait: float
+    discord_mute_hotkey: str
+    discord_deafen_hotkey: str
+    # Avisos de mensajes recibidos
+    notify_apps: list[str]
+    notify_read_text: bool
 
 
 def load_settings() -> Settings:
@@ -90,4 +97,8 @@ def load_settings() -> Settings:
         unity_editor_path=_str("UNITY_EDITOR_PATH", ""),
         whatsapp_mode=_str("WHATSAPP_MODE", "desktop"),
         discord_open_wait=_float("DISCORD_OPEN_WAIT", 15),
+        discord_mute_hotkey=_str("DISCORD_MUTE_HOTKEY", ""),
+        discord_deafen_hotkey=_str("DISCORD_DEAFEN_HOTKEY", ""),
+        notify_apps=[a for a in _str("JARVIS_NOTIFY_APPS", "whatsapp,discord").split(",") if a.strip()],
+        notify_read_text=_bool("JARVIS_NOTIFY_READ_TEXT", True),
     )

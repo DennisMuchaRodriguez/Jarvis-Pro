@@ -34,6 +34,7 @@ from __future__ import annotations
 import logging
 import math
 import queue
+from typing import Callable
 
 import numpy as np
 
@@ -106,7 +107,8 @@ class ClapListener:
         self.device = parse_device(device)
         self.detector = DoubleClapDetector(threshold=threshold, min_gap=min_gap, max_gap=max_gap)
 
-    def wait_for_double_clap(self) -> None:
+    def wait_for_double_clap(self, interrupt: Callable[[], bool] = lambda: False) -> bool:
+        """Bloquea hasta oír un doble aplauso (True) o hasta que interrupt() sea True (False)."""
         import sounddevice as sd
 
         blocks: queue.Queue[np.ndarray] = queue.Queue()
@@ -129,7 +131,9 @@ class ClapListener:
                 block = blocks.get()
                 if self.detector.process(block, t):
                     log.info("Doble aplauso detectado")
-                    return
+                    return True
+                if interrupt():
+                    return False
                 t += len(block) / SAMPLE_RATE
 
 

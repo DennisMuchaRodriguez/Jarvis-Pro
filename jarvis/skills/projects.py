@@ -15,6 +15,7 @@ _KNOWN = ", ".join(PROJECTS) or "(ninguno configurado)"
 
 @registry.tool(
     name="open_project",
+    quick=True,
     description=f"Abre uno de los proyectos del usuario en su editor. Proyectos: {_KNOWN}.",
     parameters={"name": {"type": "string", "description": "Nombre del proyecto."}},
 )

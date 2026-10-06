@@ -152,6 +152,31 @@ def check_microphone() -> None:
             "Conecta un micrófono y en Windows: Configuración > Privacidad > Micrófono > permitir apps de escritorio")
 
 
+def check_services() -> None:
+    print("\n7. Avisos de mensajes y Discord")
+    from jarvis.config import load_settings
+
+    settings = load_settings()
+    if not settings.notify_apps:
+        ok("Avisos de mensajes desactivados (JARVIS_NOTIFY_APPS vacío)")
+    else:
+        from jarvis.services.notifications import DEFAULT_DB, NotificationWatcher
+
+        if not DEFAULT_DB.exists():
+            warn("No encontré las notificaciones de Windows; los avisos de mensajes no funcionarán.")
+        else:
+            try:
+                NotificationWatcher(settings.notify_apps).poll()
+                ok(f"Puedo leer las notificaciones de Windows (avisaré de: {', '.join(settings.notify_apps)})")
+            except Exception as exc:
+                bad(f"No puedo leer las notificaciones de Windows ({exc})",
+                    "Comprueba que las notificaciones de Windows estén activadas")
+    if settings.discord_mute_hotkey:
+        ok(f"Atajo de Discord para mutear: {settings.discord_mute_hotkey} (créalo igual en Discord → Atajos de teclado)")
+    else:
+        warn("Sin DISCORD_MUTE_HOTKEY: para mutearte, Jarvis traerá Discord al frente.")
+
+
 if __name__ == "__main__":
     sys.path.insert(0, str(ROOT))
     print("Verificando la instalación de Jarvis...")
@@ -161,6 +186,10 @@ if __name__ == "__main__":
         check_data()
         check_tools()
     check_microphone()
+    try:
+        check_services()
+    except ImportError:
+        pass  # faltan librerías: ya se avisó arriba
     print()
     if problems:
         print(f"Hay {problems} problema(s) por resolver (marcados con [X]).")

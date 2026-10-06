@@ -17,3 +17,6 @@ class KeyboardInput:
 class ConsoleOutput:
     def say(self, text: str) -> None:
         print(f"Jarvis: {text}")
+
+    def wait(self) -> None:
+        pass

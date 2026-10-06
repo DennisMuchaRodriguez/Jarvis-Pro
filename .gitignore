@@ -114,3 +114,4 @@ venv/
 .pytest_cache/
 jarvis_logs/
 prueba_microfono.wav
+jarvis_datos/

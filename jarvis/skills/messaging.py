@@ -18,8 +18,13 @@ CONTACTS = load_data("contacts.json")
 _KNOWN = ", ".join(CONTACTS) or "(ninguno configurado)"
 
 
+def find_contact(name: str) -> tuple[str, dict] | None:
+    return find_entry(name, CONTACTS)
+
+
 @registry.tool(
     name="send_whatsapp",
+    quick=True,
     description=f"Envía un mensaje de WhatsApp a un contacto. Contactos: {_KNOWN}.",
     parameters={
         "contact": {"type": "string", "description": "Nombre del contacto."},
@@ -28,7 +33,7 @@ _KNOWN = ", ".join(CONTACTS) or "(ninguno configurado)"
     confirm="¿Envío a {contact} el mensaje: {message}?",
 )
 def send_whatsapp(contact: str, message: str) -> str:
-    match = find_entry(contact, CONTACTS)
+    match = find_contact(contact)
     if not match:
         return f"No tengo a '{contact}' en contactos. Contactos: {_KNOWN}."
     key, entry = match
