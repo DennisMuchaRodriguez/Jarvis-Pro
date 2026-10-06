@@ -1,7 +1,7 @@
 from jarvis.core.assistant import is_affirmative
 from jarvis.skills import load_skills
 from jarvis.skills._helpers import find_entry
-from jarvis.skills.registry import ToolRegistry
+from jarvis.skills.registry import MAX_STRICT_TOOLS, ToolRegistry
 
 APPS = {
     "visual studio code": {"aliases": ["vs code"], "target": "code"},
@@ -38,6 +38,21 @@ def test_all_skills_have_valid_definitions():
         schema = definition["input_schema"]
         assert schema["additionalProperties"] is False
         assert set(schema["required"]) == set(schema["properties"])
+    # La API rechaza la petición entera si hay más de 20 herramientas estrictas.
+    assert sum(1 for d in registry.definitions() if d.get("strict")) <= MAX_STRICT_TOOLS
+
+
+def test_strict_tools_are_capped_and_sensitive_ones_come_first():
+    registry = ToolRegistry()
+    for i in range(25):
+        registry.tool(name=f"t{i:02}", description="x", parameters={"a": {"type": "string"}},
+                      confirm="¿Seguro?" if i >= 22 else None)(lambda a: "ok")
+    registry.tool(name="no_params", description="x")(lambda: "ok")
+
+    strict = {d["name"] for d in registry.definitions() if d.get("strict")}
+    assert len(strict) == MAX_STRICT_TOOLS
+    assert {"t22", "t23", "t24"} <= strict     # las que piden confirmación, siempre estrictas
+    assert "no_params" not in strict
 
 
 def test_confirmation_blocks_sensitive_action():

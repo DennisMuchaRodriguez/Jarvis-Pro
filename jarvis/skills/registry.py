@@ -33,6 +33,9 @@ from typing import Any, Callable
 
 log = logging.getLogger(__name__)
 
+# La API acepta como máximo 20 herramientas en modo estricto ("strict") por petición.
+MAX_STRICT_TOOLS = 20
+
 ConfirmFn = Callable[[str], bool]
 
 
@@ -45,8 +48,8 @@ class Tool:
     confirm: str | Callable[..., str] | None = None
     quick: bool = False
 
-    def definition(self) -> dict[str, Any]:
-        return {
+    def definition(self, strict: bool) -> dict[str, Any]:
+        definition: dict[str, Any] = {
             "name": self.name,
             "description": self.description,
             "input_schema": {
@@ -55,8 +58,10 @@ class Tool:
                 "required": list(self.parameters),
                 "additionalProperties": False,
             },
-            "strict": True,  # Claude siempre enviará argumentos que cumplan el esquema
         }
+        if strict:
+            definition["strict"] = True  # Claude siempre enviará argumentos que cumplan el esquema
+        return definition
 
     def confirmation_question(self, args: dict[str, Any]) -> str | None:
         if self.confirm is None:
@@ -99,8 +104,25 @@ class ToolRegistry:
         return list(self._tools)
 
     def definitions(self) -> list[dict[str, Any]]:
-        # Orden estable: así el prompt cacheado no cambia entre peticiones.
-        return [self._tools[name].definition() for name in sorted(self._tools)]
+        """Definiciones para Claude, en orden estable (así el prompt cacheado no cambia)."""
+        return [self._tools[name].definition(name in self._strict_names()) for name in sorted(self._tools)]
+
+    def _strict_names(self) -> set[str]:
+        """Qué herramientas van en modo estricto (máximo MAX_STRICT_TOOLS).
+
+        Solo lo necesitan las que tienen parámetros (sin parámetros no hay nada que
+        validar), y primero las delicadas, las que piden confirmación. Si alguna se
+        queda fuera, sigue funcionando: si Claude enviara datos mal formados, la
+        función falla y Claude recibe el error para corregirse.
+        """
+        candidates = sorted(
+            (tool for tool in self._tools.values() if tool.parameters),
+            key=lambda tool: (tool.confirm is None, tool.name),
+        )
+        if len(candidates) > MAX_STRICT_TOOLS:
+            log.warning("Hay %d habilidades con parámetros; solo %d pueden ser estrictas.",
+                        len(candidates), MAX_STRICT_TOOLS)
+        return {tool.name for tool in candidates[:MAX_STRICT_TOOLS]}
 
     def execute(self, name: str, args: dict[str, Any], confirm: ConfirmFn) -> ToolOutcome:
         tool = self._tools.get(name)
